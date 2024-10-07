@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Retiro de Cuenta</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .withdrawal-page {
+            width: 100%;
+            max-width: 400px;
+        }
+        .form-container {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .title {
+            color: #333;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .error-message {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .success-message {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .withdrawal-form {
+            margin-bottom: 15px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #666;
+        }
+        input[type="text"],
+        input[type="password"],
+        input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .button-group {
+            text-align: center;
+        }
+        .submit-btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .submit-btn:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="withdrawal-page">
+        <div class="form-container">
+            <h2 class="title">Realizar Retiro</h2>
+
+            <!-- Mostrar mensajes de error -->
+            <div th:if="${errorMessage}" class="error-message">
+                <p th:text="${errorMessage}"></p>
+            </div>
+
+            <!-- Mostrar mensajes de éxito -->
+            <div th:if="${mensaje}" class="success-message">
+                <p th:text="${mensaje}"></p>
+            </div>
+
+            <form th:action="@{/solicitar-retiro}" method="post" class="withdrawal-form" th:if="${fase == 1}">
+                <div class="form-group">
+                    <label>Número de Cuenta:</label>
+                    <input type="text" name="numeroCuenta" required/>
+                </div>
+                <div class="form-group">
+                    <label>PIN:</label>
+                    <input type="password" name="pin" required/>
+                </div>
+                <div class="button-group">
+                    <button type="submit" class="submit-btn">Solicitar Retiro</button>
+                </div>
+
+                <div style="text-align: center; margin-top: 20px;">
+                    <a href="/" style="display: inline-block; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">Volver a la Página Principal</a>
+                </div>
+            </form>
+
+            <!-- Fase 2: Verificación de palabra y opciones de retiro -->
+            <div th:if="${fase == 2}">
+                <form th:action="@{/verificar-palabra-y-retirar}" method="post" class="withdrawal-form">
+                    <div class="form-group">
+                        <label>Monto del Retiro:</label>
+                        <input type="number" name="monto" required/>
+                    </div>
+                    <div class="form-group">
+                        <label>Palabra Recibida por SMS:</label>
+                        <input type="text" name="palabraIngresada" required/>
+                    </div>
+                    <div class="button-group">
+                        <button type="submit" class="submit-btn">Verificar y Retirar en Colones</button>
+                    </div>
+                  
+                </form>
+
+                <form th:action="@{/solicitar-retiro-dolares(numeroCuenta=${numeroCuenta})}" method="post" class="withdrawal-form">
+                    <div class="button-group">
+                        <button type="submit" class="submit-btn">Retirar en Dólares</button>
+                    </div>
+                    <div style="text-align: center; margin-top: 20px;">
+                        <a href="/" style="display: inline-block; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">Volver a la Página Principal</a>
+                    </div>
+                </form>
+                
+            </div>
+        </div>
+    </div>
+
+   
+
+</body>
+</html>

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Bienvenido a CajerosCardless</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            width: 80%;
+            margin: auto;
+            overflow: hidden;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            padding: 20px 0;
+        }
+        nav {
+            background: #333;
+            color: #fff;
+            padding: 10px;
+        }
+        nav ul {
+            padding: 0;
+            list-style: none;
+        }
+        nav ul li {
+            display: inline;
+            margin-right: 10px;
+        }
+        nav ul li a {
+            color: #fff;
+            text-decoration: none;
+            padding: 5px;
+        }
+        nav ul li a:hover {
+            background: #444;
+        }
+        .welcome-message {
+            background: #fff;
+            border: 1px solid #ddd;
+            padding: 20px;
+            margin-top: 20px;
+            border-radius: 5px;
+        }
+        .welcome-message p {
+            margin: 0;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Bienvenido a CajerosCardless</h1>
+        
+        <nav>
+            <ul>
+                <li><a th:href="@{/clientes/crear}">Crear Cliente</a></li>
+                <li><a th:href="@{/clientes/crear-cuenta}">Crear Cuenta</a></li>
+                <li><a th:href="@{/clientes/dashboard}">Dashboard del Cliente</a></li>
+                <li><a th:href="@{/exchange-rate}">Consultar Tipo de Cambio</a></li>
+                <li><a th:href="@{/withdrawal}">Realizar Retiro</a></li>
+                <li><a href="/seleccion-operacion">Realizar Depósito o Transferencia</a></li>
+            </ul>
+        </nav>
+        
+        <div class="welcome-message">
+            <p>Seleccione una opción del menú para comenzar.</p>
+        </div>
+    </div>
+</body>
+</html>

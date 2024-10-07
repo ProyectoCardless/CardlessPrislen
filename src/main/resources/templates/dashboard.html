@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <title>Dashboard del Cliente</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+
+        h2 {
+            color: #333;
+            text-align: center;
+        }
+
+        h3 {
+            color: #444;
+        }
+
+        div {
+            background-color: #fff;
+            border-radius: 5px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            margin-bottom: 5px;
+            color: #666;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="password"] {
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        p {
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .mensaje-exito {
+            color: #4CAF50;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .mensaje-error {
+            color: #f44336;
+            text-align: center;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>Dashboard del Cliente</h2>
+    <div>
+        <h3>Cambiar Teléfono</h3>
+        <form action="/clientes/cambiar-telefono" method="post">
+            <label>Identificación:</label>
+            <input type="text" name="identidad" required>
+            <label>Nuevo Teléfono:</label>
+            <input type="text" name="nuevoTelefono" required>
+            <button type="submit">Cambiar Teléfono</button>
+        </form>
+    </div>
+    <div>
+        <h3>Cambiar Correo</h3>
+        <form action="/clientes/cambiar-correo" method="post">
+            <label>Identificación:</label>
+            <input type="text" name="identidad" required>
+            <label>Nuevo Correo:</label>
+            <input type="email" name="nuevoCorreo" required>
+            <button type="submit">Cambiar Correo</button>
+        </form>
+    </div>
+
+    <div>
+        <h3>Consultar Estado de Cuenta</h3>
+        <form action="/clientes/estatus-cuenta" method="get">
+            <label>Número de Cuenta:</label>
+            <input type="text" name="numeroCuenta" required>
+            <button type="submit">Consultar</button>
+        </form>
+    </div>
+
+    <div>
+        <h3>Cambiar PIN</h3>
+        <form action="/clientes/cambiar-pin" method="post">
+            <label>Número de Cuenta:</label>
+            <input type="text" name="numeroCuenta" required>
+            <label>PIN Actual:</label>
+            <input type="password" name="pinActual" required>
+            <label>Nuevo PIN:</label>
+            <input type="password" name="nuevoPin" required>
+            <button type="submit">Cambiar PIN</button>
+        </form>
+    </div>
+
+    <div>
+        <h3>Consultar Estado de Cuenta por Correo</h3>
+        <form action="/clientes/consultar-estado-cuenta" method="post">
+            <label>Número de Cuenta:</label>
+            <input type="text" name="numeroCuenta" required>
+            <label>PIN:</label>
+            <input type="password" name="pin" required>
+            <button type="submit">Consultar Estado de Cuenta</button>
+        </form>
+    </div>
+
+    <div>
+        <h3>Consultar Estado de Cuenta Dolarizado por Correo</h3>
+        <form action="/clientes/consultar-estado-cuenta-dolarizada" method="post">
+            <label>Número de Cuenta:</label>
+            <input type="text" name="numeroCuenta" required>
+            <label>PIN:</label>
+            <input type="password" name="pin" required>
+            <button type="submit">Consultar Estado de Cuenta</button>
+        </form>
+    </div>
+
+    <div>
+        <h3>Eliminar Cuenta</h3>
+        <form action="/clientes/eliminar-cuenta" method="post">
+            <label>Número de Cuenta:</label>
+            <input type="text" name="numeroCuenta" required>
+            <label>PIN:</label>
+            <input type="password" name="pin" required>
+            <button type="submit">Eliminar Cuenta</button>
+        </form>
+    </div>
+
+    <div>
+        <h3>Consultar Cuentas por Identidad</h3>
+        <form action="/clientes/cuentas-por-identidad" method="get">
+            <label>Identificación:</label>
+            <input type="text" name="identidad" required>
+            <button type="submit">Consultar Cuentas</button>
+        </form>
+    </div>
+
+    <p th:if="${successMessage}" th:text="${successMessage}" class="mensaje-exito"></p>
+    <p th:if="${error}" th:text="${error}" class="mensaje-error"></p>
+
+    <div style="text-align: center; margin-top: 20px;">
+        <a href="/"
+            style="display: inline-block; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">Volver
+            a la Página Principal</a>
+    </div>
+</body>
+
+</html>

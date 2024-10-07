@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Transferencia</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        form {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 300px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #666;
+        }
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        input[readonly] {
+            background-color: #e9ecef;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        p {
+            color: #d32f2f;
+            margin-top: 15px;
+            text-align: center;
+        }
+        .success-message {
+            color: #4CAF50;
+            margin-top: 15px;
+            text-align: center;
+        }
+        .error-message {
+            color: #d32f2f;
+            margin-top: 15px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h2>Realizar Transferencia</h2>
+    <form action="#" th:action="@{/transferencia/{numeroCuentaOrigen}/iniciar-transferencia(numeroCuentaOrigen=${numeroCuentaOrigen})}" method="post">
+        <label>Número de Cuenta Origen:</label>
+        <input type="text" name="numeroCuentaOrigen" th:value="${numeroCuentaOrigen}" readonly />
+        <label>PIN:</label>
+        <input type="password" name="pin" />
+        <button type="submit">Iniciar Transferencia</button>
+    </form>
+    <p th:if="${errorMessage}" th:text="${errorMessage}" class="error-message"></p>
+    <p th:if="${successMessage}" th:text="${successMessage}" class="success-message"></p>
+
+    <div style="text-align: center; margin-top: 20px;">
+        <a href="/" style="display: inline-block; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">Volver a la Página Principal</a>
+    </div>
+</body>
+</html>

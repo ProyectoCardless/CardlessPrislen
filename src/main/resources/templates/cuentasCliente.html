@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <title>Cuentas del Cliente</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+
+        h2 {
+            color: #333;
+            text-align: center;
+        }
+
+        table {
+            width: 100%;
+            margin-bottom: 20px;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .mensaje-exito {
+            color: #4CAF50;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .mensaje-error {
+            color: #f44336;
+            text-align: center;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>Cuentas del Cliente</h2>
+
+    <div>
+        <h3>Información del Cliente</h3>
+        <p><strong>Nombre:</strong> <span th:text="${cliente.nombreCompleto}"></span></p>
+        <p><strong>Identificación:</strong> <span th:text="${cliente.identificacion}"></span></p>
+    </div>
+
+    <div>
+        <h3>Lista de Cuentas</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Número de Cuenta</th>
+                    <th>Saldo Actual</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="cuenta : ${cuentas}">
+                    <td th:text="${cuenta.numeroCuenta}"></td>
+                    <td th:text="${cuenta.saldo}"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <p th:if="${successMessage}" th:text="${successMessage}" class="mensaje-exito"></p>
+    <p th:if="${error}" th:text="${error}" class="mensaje-error"></p>
+
+    <div style="text-align: center; margin-top: 20px;">
+        <a href="/clientes/dashboard"
+            style="display: inline-block; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">
+            Volver al Dashboard
+        </a>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Consultar Transacciones</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .consultar-transacciones-page {
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+        }
+        .form-container {
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .title {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .consultar-transacciones-form {
+            display: flex;
+            flex-direction: column;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #666;
+        }
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .button-group {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .submit-btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .submit-btn:hover {
+            background-color: #45a049;
+        }
+        .transacciones-list {
+            margin-top: 20px;
+        }
+        .transacciones-list ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        .transacciones-list li {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        .error-message {
+            color: #d32f2f;
+            text-align: center;
+            margin-top: 10px;
+        }
+        .fade-in {
+            animation: fadeIn 0.5s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="consultar-transacciones-page">
+        <div class="form-container fade-in">
+            <h2 class="title">Consultar Transacciones</h2>
+
+            <!-- Fase 1: Solicitar Acceso -->
+            <form th:action="@{/solicitar-acceso-transacciones}" method="post" class="consultar-transacciones-form" th:if="${fase == 1}">
+                <div class="form-group">
+                    <label>Número de Cuenta:</label>
+                    <input type="text" name="numeroCuenta" th:value="${numeroCuenta}" required />
+                </div>
+                <div class="form-group">
+                    <label>PIN:</label>
+                    <input type="password" name="pin" required />
+                </div>
+
+                <div class="button-group">
+                    <button type="submit" class="submit-btn">Solicitar Acceso</button>
+                </div>
+            </form>
+
+            <!-- Fase 2: Verificar palabra recibida y obtener transacciones -->
+            <form th:action="@{/verificar-palabra-transacciones}" method="post" class="consultar-transacciones-form" th:if="${fase == 2}">
+                <input type="hidden" name="numeroCuenta" th:value="${numeroCuenta}" />
+
+                <div class="form-group">
+                    <label>Palabra Recibida por SMS:</label>
+                    <input type="text" name="palabraIngresada" required />
+                </div>
+
+                <div class="button-group">
+                    <button type="submit" class="submit-btn">Verificar y Obtener Transacciones</button>
+                </div>
+                <div style="text-align: center; margin-top: 20px;">
+                    <a href="/" style="display: inline-block; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">Volver a la Página Principal</a>
+                </div>
+            </form>
+
+            <!-- Mostrar transacciones si existen -->
+            <div th:if="${transacciones != null}" class="transacciones-list">
+                <h3>Transacciones:</h3>
+                <ul>
+                    <li th:each="transaccion : ${transacciones}">
+                        <strong>Tipo:</strong> <span th:text="${transaccion.tipo}"></span><br />
+                        <strong>Monto:</strong> <span th:text="${transaccion.monto}"></span><br />
+                        <strong>Fecha:</strong> <span th:text="${#dates.format(transaccion.fecha, 'dd/MM/yyyy')}"></span><br />
+                        <strong>Comisión:</strong> <span th:text="${transaccion.comisionAplicada > 0 ? 'Sí' : 'No'}"></span>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Mostrar mensaje de error si existe -->
+            <div th:if="${errorMessage != null}" class="error-message">
+                <p th:text="${errorMessage}"></p>
+            </div>
+        </div>
+    </div>
+    
+</body>
+</html>

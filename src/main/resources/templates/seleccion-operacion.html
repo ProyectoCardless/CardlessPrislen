@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Selección de Operación</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+        h2 {
+            color: #333;
+            text-align: center;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            margin-bottom: 5px;
+            color: #666;
+        }
+        input, select {
+            padding: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .error-message {
+            color: red;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Selección de Operación</h2>
+        <div th:if="${param.error}" class="error-message">
+            Operación no válida. Por favor, intente de nuevo.
+        </div>
+        <form action="/seleccion-operacion" method="post">
+            <label for="numeroCuenta">Número de Cuenta:</label>
+            <input type="text" id="numeroCuenta" name="numeroCuenta" required>
+            
+            <label for="operacion">Seleccione la Operación:</label>
+            <select id="operacion" name="operacion" required>
+                <option value="deposito">Depósito</option>
+                <option value="transferencia">Transferencia</option>
+            </select>
+            
+            <button type="submit">Continuar</button>
+
+            <div style="text-align: center; margin-top: 20px;">
+                <a href="/" style="display: inline-block; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">Volver a la Página Principal</a>
+            </div>
+        </form>
+    </div>
+
+    
+</body>
+</html>

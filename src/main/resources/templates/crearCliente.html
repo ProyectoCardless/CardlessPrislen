@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Crear Cliente</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        h2 {
+            color: #333;
+            text-align: center;
+        }
+        .alert {
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+        .alert-success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        .alert-danger {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        form div {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #666;
+        }
+        input[type="text"],
+        input[type="email"],
+        input[type="date"],
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        p {
+            color: #d32f2f;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Crear Cliente</h2>
+
+        <!-- Mostrar mensaje de éxito o error -->
+        <div th:if="${param.success}" class="alert alert-success">Cliente creado con éxito</div>
+        <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+        <form th:action="@{/clientes/crear}" th:object="${clienteForm}" method="post">
+            <div>
+                <label>Nombre Completo:</label>
+                <input type="text" th:field="*{nombre}" />
+                <p th:if="${#fields.hasErrors('nombre')}" th:errors="*{nombre}"></p>
+            </div>
+
+            <div>
+                <label>Categoría:</label>
+                <select th:field="*{categoria}">
+                    <option value="">Seleccione</option>
+                    <option value="Fisico">Físico</option>
+                    <option value="Juridico">Jurídico</option>
+                </select>
+                <p th:if="${#fields.hasErrors('categoria')}" th:errors="*{categoria}"></p>
+            </div>
+
+            <div>
+                <label>Teléfono (Ingrese el codigo de su país al principio sin incluir el +):</label>
+                <input type="text" th:field="*{telefono}" />
+                <p th:if="${#fields.hasErrors('telefono')}" th:errors="*{telefono}"></p>
+            </div>
+
+            <div>
+                <label>Correo Electrónico:</label>
+                <input type="email" th:field="*{correo}" />
+                <p th:if="${#fields.hasErrors('correo')}" th:errors="*{correo}"></p>
+            </div>
+
+            <div th:if="${clienteForm.categoria == 'Fisico'}">
+                <label>Fecha de Nacimiento:</label>
+                <input type="date" th:field="*{fechaNacimiento}" />
+                <p th:if="${#fields.hasErrors('fechaNacimiento')}" th:errors="*{fechaNacimiento}"></p>
+            </div>
+
+            <div th:if="${clienteForm.categoria == 'Juridico'}">
+                <label>Tipo de Negocio:</label>
+                <input type="text" th:field="*{tipoNegocio}" />
+                <p th:if="${#fields.hasErrors('tipoNegocio')}" th:errors="*{tipoNegocio}"></p>
+
+                <label>Razón Social:</label>
+                <input type="text" th:field="*{razonSocial}" />
+                <p th:if="${#fields.hasErrors('razonSocial')}" th:errors="*{razonSocial}"></p>
+            </div>
+
+            <div>
+                <label>Identificación:</label>
+                <input type="text" th:field="*{identificacion}" />
+                <p th:if="${#fields.hasErrors('identificacion')}" th:errors="*{identificacion}"></p>
+            </div>
+
+            <div>
+                <label>Número máximo de cuentas:</label>
+                <input type="number" th:field="*{maxCuentas}" />
+                <p th:if="${#fields.hasErrors('maxCuentas')}" th:errors="*{maxCuentas}"></p>
+            </div>
+
+            <button type="submit">Crear Cliente</button>
+        </form>
+    </div>
+    <div style="text-align: center; margin-top: 20px;">
+        <a href="/" style="display: inline-block; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">Volver a la Página Principal</a>
+    </div>
+</body>
+</html>
