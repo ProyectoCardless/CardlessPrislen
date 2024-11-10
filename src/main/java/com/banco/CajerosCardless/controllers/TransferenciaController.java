@@ -8,6 +8,8 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.banco.CajerosCardless.services.CuentaService;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 import java.math.BigDecimal;
 import java.util.Map;
 
@@ -48,7 +50,8 @@ public class TransferenciaController {
                                                @RequestParam String palabraIngresada,
                                                @RequestParam BigDecimal monto,
                                                @RequestParam String numeroCuentaDestino,
-                                               RedirectAttributes redirectAttributes) {
+                                               RedirectAttributes redirectAttributes,
+                                                HttpServletRequest request) {
         if (palabraIngresada.isEmpty() || monto.compareTo(BigDecimal.ZERO) <= 0 || numeroCuentaDestino.isEmpty()) {
             redirectAttributes.addFlashAttribute("errorMessage", "La palabra ingresada, monto o número de cuenta destino no son válidos");
             return "redirect:/transferencia/" + numeroCuentaOrigen + "/verificacion"; // Mantener en la fase de verificación
@@ -56,7 +59,7 @@ public class TransferenciaController {
 
         try {
             Map<String, Object> result = cuentaService.verificarPalabraYTransferir(
-                    numeroCuentaOrigen, palabraIngresada, monto, numeroCuentaDestino);
+                    numeroCuentaOrigen, palabraIngresada, monto, numeroCuentaDestino, request);
 
             redirectAttributes.addFlashAttribute("mensaje", "Transferencia exitosa");
             redirectAttributes.addFlashAttribute("saldoOrigen", result.get("saldoOrigen"));

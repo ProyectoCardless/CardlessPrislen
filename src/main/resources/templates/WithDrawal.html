@@ -118,26 +118,35 @@
             <!-- Fase 2: Verificación de palabra y opciones de retiro -->
             <div th:if="${fase == 2}">
                 <form th:action="@{/verificar-palabra-y-retirar}" method="post" class="withdrawal-form">
+                    <input type="hidden" name="numeroCuenta" th:value="${numeroCuenta}" />
+                
                     <div class="form-group">
                         <label>Monto del Retiro:</label>
-                        <input type="number" name="monto" required/>
+                        <input type="number" name="monto" required />
                     </div>
                     <div class="form-group">
                         <label>Palabra Recibida por SMS:</label>
-                        <input type="text" name="palabraIngresada" required/>
+                        <input type="text" name="palabraIngresada" required />
                     </div>
                     <div class="button-group">
                         <button type="submit" class="submit-btn">Verificar y Retirar en Colones</button>
                     </div>
-                  
                 </form>
 
-                <form th:action="@{/solicitar-retiro-dolares(numeroCuenta=${numeroCuenta})}" method="post" class="withdrawal-form">
+
+                <form th:action="@{'/' + ${numeroCuenta} + '/solicitar-retiro-dolares'}" method="post" class="withdrawal-form">
+                    <input type="hidden" name="numeroCuenta" th:value="${numeroCuenta}" />
+                
+                    <div class="form-group">
+                        <label>Monto del Retiro en Dólares:</label>
+                        <input type="number" name="monto" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Palabra Recibida por SMS:</label>
+                        <input type="text" name="palabraIngresada" required />
+                    </div>
                     <div class="button-group">
                         <button type="submit" class="submit-btn">Retirar en Dólares</button>
-                    </div>
-                    <div style="text-align: center; margin-top: 20px;">
-                        <a href="/" style="display: inline-block; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">Volver a la Página Principal</a>
                     </div>
                 </form>
                 

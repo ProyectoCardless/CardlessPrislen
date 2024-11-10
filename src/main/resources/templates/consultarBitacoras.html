@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <title>Consulta de Bitácoras</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        h2 {
+            color: #333;
+            text-align: center;
+        }
+
+        label {
+            display: block;
+            margin: 10px 0 5px;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>Consulta de Bitácoras</h2>
+
+    <!-- Formulario de consulta -->
+    <form th:action="@{/consultarBitacoras}" method="post">
+        <label>Fecha:</label>
+        <input type="date" name="fecha"><br>
+
+        <label>Hora de Inicio:</label>
+        <input type="time" name="horaInicio"><br>
+
+        <label>Hora de Fin:</label>
+        <input type="time" name="horaFin"><br>
+
+        <label>Formato:</label>
+        <select name="formato">
+            <option value="PLANO">Texto Plano</option>
+            <option value="CSV">CSV</option>
+            <option value="JSON">JSON</option>
+        </select><br><br>
+
+        <button type="submit">Consultar Bitácoras</button>
+    </form>
+
+    <!-- Mostrar resultado o mensaje de error -->
+    <div th:if="${resultado}">
+        <h3>Resultados en Formato: <span th:text="${formato}"></span></h3>
+        <pre th:text="${resultado}"></pre>
+    </div>
+
+    <div th:if="${error}" style="color: red;">
+        <p th:text="${error}"></p>
+    </div>
+</body>
+
+</html>

@@ -18,6 +18,8 @@ import com.banco.CajerosCardless.models.Cuenta;
 import com.banco.CajerosCardless.services.CuentaService;
 import com.banco.CajerosCardless.services.ExchangeRateService;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 @Controller
 public class DepositoController {
 
@@ -40,13 +42,15 @@ public class DepositoController {
             @PathVariable String numeroCuenta,
             @RequestParam String tipoDeposito,
             @RequestParam BigDecimal monto,
-            @RequestParam String pin) {
+            @RequestParam String pin,
+            HttpServletRequest request) { // Agregar `HttpServletRequest request` para capturar la IP y otros datos
 
         try {
-            if ("dolares".equals(tipoDeposito)) {
-                return depositarDolares(numeroCuenta, monto, pin);
+            // Determina si es un depósito en dólares o colones
+            if ("dolares".equalsIgnoreCase(tipoDeposito)) {
+                return depositarDolares(numeroCuenta, monto, pin, request);
             } else {
-                return depositarColones(numeroCuenta, monto, pin);
+                return depositarColones(numeroCuenta, monto, pin, request);
             }
         } catch (IllegalArgumentException e) {
             Map<String, Object> errorResponse = new HashMap<>();
@@ -55,30 +59,38 @@ public class DepositoController {
         }
     }
 
-    private ResponseEntity<Map<String, Object>> depositarColones(String numeroCuenta, BigDecimal monto, String pin) {
-        // Lógica para depositar en colones
-        Cuenta cuenta = cuentaService.depositar(numeroCuenta, monto, pin);
+    private ResponseEntity<Map<String, Object>> depositarColones(String numeroCuenta, BigDecimal monto, String pin,
+            HttpServletRequest request) {
+        // Llamada al método `depositar` en `cuentaService` pasando `request`
+        Cuenta cuenta = cuentaService.depositar(numeroCuenta, monto, pin, request);
+
         Map<String, Object> response = new HashMap<>();
         response.put("numeroCuenta", cuenta.getNumeroCuenta());
         response.put("montoRealDepositado", monto);
-        response.put("comision", cuenta.getTransacciones().get(cuenta.getTransacciones().size() - 1).getComisionAplicada());
+        response.put("comision",
+                cuenta.getTransacciones().get(cuenta.getTransacciones().size() - 1).getComisionAplicada());
         response.put("mensaje", "Depósito realizado correctamente.");
+
         return ResponseEntity.ok(response);
     }
 
-    private ResponseEntity<Map<String, Object>> depositarDolares(String numeroCuenta, BigDecimal montoUSD, String pin) {
-        // Lógica para depositar en dólares
+    private ResponseEntity<Map<String, Object>> depositarDolares(String numeroCuenta, BigDecimal montoUSD, String pin,
+            HttpServletRequest request) {
+        // Obtener el tipo de cambio de compra en colones
         BigDecimal tipoCambioCompra = exchangeRateService.getCRCExchangeRate();
-        BigDecimal montoCRC = montoUSD.multiply(tipoCambioCompra);
-        Cuenta cuenta = cuentaService.depositar(numeroCuenta, montoCRC, pin);
-        
+        BigDecimal montoCRC = montoUSD.multiply(tipoCambioCompra); // Convertir de USD a CRC
+
+        // Llamada al método `depositar` en `cuentaService` pasando `request`
+        Cuenta cuenta = cuentaService.depositar(numeroCuenta, montoCRC, pin, request);
+
         Map<String, Object> response = new HashMap<>();
         response.put("mensaje", "Depósito realizado correctamente");
+        response.put("tipoCambioDolaresUSD", tipoCambioCompra);
         response.put("montoDepositadoUSD", montoUSD);
-        response.put("tipoCambio", tipoCambioCompra);
         response.put("montoDepositadoCRC", montoCRC);
-        response.put("montoRealDepositado", cuenta.getSaldo());
-        response.put("comision", cuenta.getTransacciones().get(cuenta.getTransacciones().size() - 1).getComisionAplicada());
+        response.put("saldo", cuenta.getSaldo());
+        response.put("comision",
+                cuenta.getTransacciones().get(cuenta.getTransacciones().size() - 1).getComisionAplicada());
 
         return ResponseEntity.ok(response);
     }

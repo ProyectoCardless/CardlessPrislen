@@ -9,20 +9,27 @@ import com.banco.CajerosCardless.models.Comision;
 import com.banco.CajerosCardless.models.Cuenta;
 import com.banco.CajerosCardless.models.EstadoCuenta;
 import com.banco.CajerosCardless.models.Transaccion;
+import com.banco.CajerosCardless.observers.CsvLogObserver;
+import com.banco.CajerosCardless.observers.JsonLogObserver;
+import com.banco.CajerosCardless.observers.PositionalLogObserver;
 import com.banco.CajerosCardless.repositories.ClienteRepository;
 import com.banco.CajerosCardless.repositories.ComisionRepository;
 import com.banco.CajerosCardless.repositories.CuentaRepository;
 import com.banco.CajerosCardless.repositories.TransaccionRepository;
 import com.banco.CajerosCardless.utils.AESCipher;
+import com.banco.CajerosCardless.utils.OpenAITranslationService;
 import com.banco.CajerosCardless.utils.RandomWordGenerator;
 import com.itextpdf.text.Document;
 import com.itextpdf.text.DocumentException;
 import com.itextpdf.text.Paragraph;
 import com.itextpdf.text.pdf.PdfWriter;
-
+import org.springframework.web.client.RestTemplate;
+import org.json.JSONObject;
 import io.jsonwebtoken.io.IOException;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestBody;
 
@@ -35,18 +42,18 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Random;
 
+import jakarta.mail.util.ByteArrayDataSource;
+import jakarta.servlet.http.HttpServletRequest;
+import java.sql.Timestamp;
+
+import javax.mail.*;
+import javax.mail.internet.*;
 import javax.activation.DataHandler;
-import javax.mail.Message;
-import javax.mail.MessagingException;
-import javax.mail.Multipart;
-import javax.mail.PasswordAuthentication;
-import javax.mail.Session;
-import javax.mail.Transport;
+import javax.activation.DataSource;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
-import javax.mail.util.ByteArrayDataSource;
 @Service
 public class CuentaService {
 
@@ -55,9 +62,14 @@ public class CuentaService {
     private static final int TRANSACCIONES_GRATIS = 3;
     private static final BigDecimal COMISION = new BigDecimal("0.05");
 
+    private UserActionLogger userActionLogger;
+
     private final SmsService smsService;
     private final Map<String, String> verificationMap = new HashMap<>();
     private final Map<String, Integer> failedAttemptsMap = new HashMap<>();
+    @Autowired
+    private BasicPDFGenerator basicPDFGenerator;
+
 
     @Autowired
     private TransaccionRepository transaccionRepository;
@@ -73,12 +85,53 @@ public class CuentaService {
 
     @Autowired
     private ExchangeRateService exchangeRateService;
+
+     @Autowired
+    private JavaMailSender mailSender;
+    @Autowired
+    private OpenAITranslationService translationService;
+
+    @Autowired
+    private TranslatedPDFGenerator translatedPDFGenerator;
+    
     private static final BigDecimal TASA_CAMBIO_USD = BigDecimal.valueOf(0.0018);
 
      @Autowired
-    public CuentaService(SmsService smsService, CuentaRepository cuentaRepository) {
+    public CuentaService(SmsService smsService, CuentaRepository cuentaRepository,OpenAITranslationService translationService,
+            JavaMailSender mailSender, UserActionLogger userActionLogger) {
         this.smsService = smsService;
         this.cuentaRepository = cuentaRepository;
+        this.translationService = translationService;
+        this.translatedPDFGenerator = new TranslatedPDFGenerator(translationService);
+        this.mailSender = mailSender;
+        this.userActionLogger = userActionLogger;
+
+    }
+    
+    public void realizarTransaccion(EstadoCuenta estadoCuenta, BigDecimal monto, Transaccion.Tipo tipo, String action,
+            HttpServletRequest request) {
+        // Lógica de la transacción
+        Transaccion transaccion = new Transaccion();
+        transaccion.setCuenta(cuentaRepository.findByNumeroCuenta(estadoCuenta.getNumeroCuenta()));
+        transaccion.setMonto(monto);
+        transaccion.setTipo(tipo);
+        transaccion.setFecha(new Timestamp(System.currentTimeMillis()));
+
+        if (tipo == Transaccion.Tipo.Deposito) {
+            estadoCuenta.setSaldo(estadoCuenta.getSaldo().add(monto));
+        } else if (tipo == Transaccion.Tipo.Retiro) {
+            estadoCuenta.setSaldo(estadoCuenta.getSaldo().subtract(monto));
+        } 
+        System.out.println(tipo);
+        transaccionRepository.save(transaccion);
+
+        // Obtener datos de bitácora
+        String ipAddress = getClientIpAddress(request);
+        String operatingSystem = getClientOperatingSystem(request);
+        String country = getCountryFromIp(ipAddress);
+
+        // Registrar la acción en la bitácora
+        userActionLogger.logAction(ipAddress, operatingSystem, country, action);
     }
 
     public Cuenta obtenerCuentaPorNumero(String numeroCuenta) {
@@ -91,10 +144,78 @@ public class CuentaService {
         return cuentaRepository.findByClienteId(cliente.getId());
     }
 
+    public String getClientIpAddress(HttpServletRequest request) {
+    String[] headers = {
+        "X-Forwarded-For", "X-REAL-IP", "HTTP_X_FORWARDED_FOR", "HTTP_X_FORWARDED",
+        "HTTP_X_CLUSTER_CLIENT_IP", "HTTP_CLIENT_IP", "HTTP_FORWARDED_FOR", "HTTP_FORWARDED",
+        "HTTP_VIA", "REMOTE_ADDR"
+    };
+
+    for (String header : headers) {
+        String ipAddress = request.getHeader(header);
+        if (ipAddress != null && !ipAddress.isEmpty() && !"unknown".equalsIgnoreCase(ipAddress)) {
+            // Handle the case where multiple IP addresses are provided (comma-separated)
+            return ipAddress.split(",")[0];
+        }
+    }
+
+    // Fallback to request.getRemoteAddr(), but handle local loopback for testing
+    String remoteAddr = request.getRemoteAddr();
+    if ("0:0:0:0:0:0:0:1".equals(remoteAddr) || "127.0.0.1".equals(remoteAddr)) {
+        return "190.10.14.84"; // Replace with any IP address for testing
+    }
+    
+    return remoteAddr;
+}
+
+    
+
+
+    public String getClientOperatingSystem(HttpServletRequest request) {
+    String userAgent = request.getHeader("User-Agent").toLowerCase();
+
+    if (userAgent.contains("windows")) {
+        return "Windows";
+    } else if (userAgent.contains("mac")) {
+        return "MacOS";
+    } else if (userAgent.contains("x11") || userAgent.contains("nix") || userAgent.contains("nux")) {
+        return "Unix/Linux";
+    } else if (userAgent.contains("android")) {
+        return "Android";
+    } else if (userAgent.contains("iphone")) {
+        return "iOS";
+    } else {
+        return "Unknown";
+    }
+    }
+
+    public String getCountryFromIp(String ipAddress) {
+        if (ipAddress == null || ipAddress.isEmpty() || "127.0.0.1".equals(ipAddress)) {
+            return "Localhost";
+        }
+
+        String apiUrl = "http://ip-api.com/json/" + ipAddress;
+
+        try {
+            RestTemplate restTemplate = new RestTemplate();
+            String response = restTemplate.getForObject(apiUrl, String.class);
+
+            JSONObject jsonResponse = new JSONObject(response);
+            String country = jsonResponse.optString("country", "Unknown");
+
+            if ("fail".equals(jsonResponse.optString("status"))) {
+                return "Unknown";
+            }
+
+            return country;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "Unknown";
+        }
+    }
     public EstadoCuenta consultarEstadoCuenta(String numeroCuenta, String pin) {
         Cuenta cuenta = validarCuenta(numeroCuenta, pin);
 
-        // Retrieve the list of transactions associated with the account
         List<Transaccion> transacciones = transaccionRepository.findByCuenta(cuenta);
 
         // Retrieve transaction sums, handling possible nulls
@@ -207,73 +328,7 @@ public class CuentaService {
         return "Error: Cuenta no encontrada o saldo insuficiente.";
     }
     
-    public void enviarPdfPorCorreo(EstadoCuenta estadoCuenta, String email) {
-        // Create PDF
-        ByteArrayOutputStream pdfOutputStream = new ByteArrayOutputStream();
-        try {
-            Document document = new Document();
-            PdfWriter.getInstance(document, pdfOutputStream);
-            document.open();
-
-            // Add content to the PDF
-            document.add(new Paragraph("Estado de Cuenta"));
-            document.add(new Paragraph("Número de Cuenta: " + estadoCuenta.getNumeroCuenta()));
-            document.add(new Paragraph("Saldo: " + estadoCuenta.getSaldo()));
-            document.add(new Paragraph("Estatus: " + estadoCuenta.getEstatus()));
-            document.add(new Paragraph("Fecha de Creación: " + estadoCuenta.getFechaCreacion()));
-            // Add more details as needed from EstadoCuenta
-
-            document.close();
-        } catch (DocumentException e) {
-            e.printStackTrace();
-        }
-
-        // Send email
-        Properties props = new Properties();
-        props.put("mail.smtp.host", "smtp.gmail.com");
-        props.put("mail.smtp.port", "465");
-        props.put("mail.smtp.auth", "true");
-        props.put("mail.smtp.socketFactory.port", "465");
-        props.put("mail.smtp.socketFactory.class", "javax.net.ssl.SSLSocketFactory");
-        props.put("mail.smtp.ssl.protocols", "TLSv1.2");
-
-        Session session = Session.getInstance(props, new javax.mail.Authenticator() {
-            protected PasswordAuthentication getPasswordAuthentication() {
-                return new PasswordAuthentication("proyectocardless@gmail.com", "proyectocardless1234");
-            }
-        });
-
-        try {
-            MimeMessage message = new MimeMessage(session);
-            message.setFrom(new InternetAddress("proyectocardless@gmail.com"));
-            message.setRecipient(Message.RecipientType.TO, new InternetAddress(email));
-            message.setSubject("Estado de Cuenta");
-
-            // Create the email body part
-            MimeBodyPart messageBodyPart = new MimeBodyPart();
-            messageBodyPart.setText("Adjunto encontrará su estado de cuenta.");
-
-            // Create the attachment body part
-            MimeBodyPart attachmentBodyPart = new MimeBodyPart();
-            attachmentBodyPart.setDataHandler(
-                    new DataHandler(new ByteArrayDataSource(pdfOutputStream.toByteArray(), "application/pdf")));
-            attachmentBodyPart.setFileName("EstadoCuenta.pdf");
-
-            // Create the multipart message
-            Multipart multipart = new MimeMultipart();
-            multipart.addBodyPart(messageBodyPart);
-            multipart.addBodyPart(attachmentBodyPart);
-
-            // Set the complete message parts
-            message.setContent(multipart);
-
-            // Send the message
-            Transport.send(message);
-        } catch (MessagingException | IOException e) {
-            e.printStackTrace();
-            // Handle the exception appropriately
-        }
-    }
+    
 
     public boolean validarPalabra(String numeroCuenta, String palabraIngresada) {
         if (verificationMap.containsKey(numeroCuenta)) {
@@ -321,42 +376,35 @@ public class CuentaService {
         return pinIngresado.equals(pinDesencriptado);
     }
 
-    public Cuenta depositar(String numeroCuenta, BigDecimal monto, String pinIngresado) {
+    public Cuenta depositar(String numeroCuenta, BigDecimal monto, String pinIngresado, HttpServletRequest request) {
         Cuenta cuenta = cuentaRepository.findByNumeroCuenta(numeroCuenta);
         if (cuenta != null) {
-            // Validate the PIN
             if (validarPIN(pinIngresado, cuenta.getPinEncriptado())) {
                 BigDecimal comision = BigDecimal.ZERO;
-
-                // Count the number of transactions
                 long totalTransacciones = transaccionRepository.countByCuenta(cuenta);
 
-                // If more than 3 transactions, apply commission
                 if (totalTransacciones >= TRANSACCIONES_GRATIS) {
                     comision = monto.multiply(COMISION);
-                    monto = monto.subtract(comision); // Reduce deposited amount
+                    monto = monto.subtract(comision);
                 }
 
-                // Convert to USD if required
                 BigDecimal crcRate = exchangeRateService.getCRCExchangeRate();
                 if (crcRate != null) {
-                    @SuppressWarnings("deprecation")
                     BigDecimal montoUSD = monto.divide(crcRate, BigDecimal.ROUND_HALF_EVEN);
                     System.out.println("Deposit amount in USD: " + montoUSD);
                 }
 
-                // Update the account balance
                 cuenta.setSaldo(cuenta.getSaldo().add(monto));
                 cuentaRepository.save(cuenta);
 
-                // Record the transaction
-                Transaccion transaccion = new Transaccion();
-                transaccion.setCuenta(cuenta);
-                transaccion.setTipo(Transaccion.Tipo.Deposito);
-                transaccion.setMonto(monto);
-                transaccion.setComisionAplicada(comision);
-                transaccionRepository.save(transaccion);
+                // Create EstadoCuenta object
+                EstadoCuenta estadoCuenta = new EstadoCuenta();
+                estadoCuenta.setNumeroCuenta(cuenta.getNumeroCuenta());
+                estadoCuenta.setSaldo(cuenta.getSaldo());
+                estadoCuenta.setEstatus(cuenta.getEstatus().toString());
+                estadoCuenta.setFechaCreacion(cuenta.getFechaCreacion());
 
+                realizarTransaccion(estadoCuenta, monto, Transaccion.Tipo.Deposito, "Depósito", request);
                 return cuenta;
             } else {
                 throw new IllegalArgumentException("El PIN ingresado es incorrecto.");
@@ -368,7 +416,6 @@ public class CuentaService {
     public void enviarPdfPorCorreo(EstadoCuenta estadoCuenta) {
         // Obtener la cuenta asociada
         Cuenta cuenta = cuentaRepository.findByNumeroCuenta(estadoCuenta.getNumeroCuenta());
-
         if (cuenta == null) {
             throw new IllegalArgumentException("La cuenta no existe.");
         }
@@ -376,74 +423,57 @@ public class CuentaService {
         // Obtener el correo del cliente
         String email = cuenta.getCliente().getCorreo();
 
-        // Crear el PDF
-        ByteArrayOutputStream pdfOutputStream = new ByteArrayOutputStream();
+        // Obtener las transacciones de la cuenta
+        List<Transaccion> transacciones = transaccionRepository.findByCuenta(cuenta);
+
+        // Crear PDFs en español e inglés
+        ByteArrayOutputStream pdfOutputStreamEs = new ByteArrayOutputStream();
+        ByteArrayOutputStream pdfOutputStreamEn = new ByteArrayOutputStream();
+
         try {
-            Document document = new Document();
-            PdfWriter.getInstance(document, pdfOutputStream);
-            document.open();
+            // Generar PDF en español
+            basicPDFGenerator.generatePDF(estadoCuenta, transacciones, pdfOutputStreamEs);
 
-            // Añadir contenido al PDF
-            document.add(new Paragraph("Estado de Cuenta"));
-            document.add(new Paragraph("Número de Cuenta: " + estadoCuenta.getNumeroCuenta()));
-            document.add(new Paragraph("Saldo: " + estadoCuenta.getSaldo()));
-            document.add(new Paragraph("Estatus: " + estadoCuenta.getEstatus()));
-            document.add(new Paragraph("Fecha de Creación: " + estadoCuenta.getFechaCreacion()));
-            // Añadir más detalles según sea necesario
+            // Generar PDF traducido al inglés
+            translatedPDFGenerator.generateTranslatedPDF(estadoCuenta, transacciones, pdfOutputStreamEn, "en");
 
-            document.close();
-        } catch (DocumentException e) {
+        } catch (Exception e) {
             e.printStackTrace();
-            throw new RuntimeException("Error al generar el PDF.");
+            throw new RuntimeException("Error al generar los PDFs.");
         }
 
-        // Enviar el correo con el PDF adjunto
+        // Enviar el correo con ambos PDFs adjuntos
         try {
-            Properties props = new Properties();
-            props.put("mail.smtp.host", "smtp.gmail.com");
-            props.put("mail.smtp.port", "465");
-            props.put("mail.smtp.auth", "true");
-            props.put("mail.smtp.socketFactory.port", "465");
-            props.put("mail.smtp.socketFactory.class", "javax.net.ssl.SSLSocketFactory");
-            props.put("mail.smtp.ssl.protocols", "TLSv1.2");
-
-            Session session = Session.getInstance(props, new javax.mail.Authenticator() {
-                protected PasswordAuthentication getPasswordAuthentication() {
-                    return new PasswordAuthentication("proyectocardless@gmail.com", "voin wncz yxra pipr");
-                }
-            });
-
-            MimeMessage message = new MimeMessage(session);
-            message.setFrom(new InternetAddress("proyectocardless@gmail.com"));
-            message.setRecipient(Message.RecipientType.TO, new InternetAddress(email));
-            message.setSubject("Estado de Cuenta");
-
-            // Crear la parte de cuerpo del mensaje
-            MimeBodyPart messageBodyPart = new MimeBodyPart();
-            messageBodyPart.setText("Adjunto encontrará su estado de cuenta.");
-
-            // Crear la parte del adjunto
-            MimeBodyPart attachmentBodyPart = new MimeBodyPart();
-            attachmentBodyPart.setDataHandler(
-                    new DataHandler(new ByteArrayDataSource(pdfOutputStream.toByteArray(), "application/pdf")));
-            attachmentBodyPart.setFileName("EstadoCuenta.pdf");
-
-            // Crear el mensaje multipart
-            Multipart multipart = new MimeMultipart();
-            multipart.addBodyPart(messageBodyPart);
-            multipart.addBodyPart(attachmentBodyPart);
-
-            // Setear el contenido completo del mensaje
-            message.setContent(multipart);
-
-            // Enviar el mensaje
-            Transport.send(message);
-        } catch (MessagingException e) {
+            sendEmailWithAttachment(
+                    email,
+                    "Estado de Cuenta",
+                    "Adjunto encontrará su estado de cuenta en español e inglés.",
+                    pdfOutputStreamEs.toByteArray(),
+                    pdfOutputStreamEn.toByteArray());
+        } catch (Exception e) {
             e.printStackTrace();
             throw new RuntimeException("Error al enviar el correo.");
         }
     }
 
+    private void sendEmailWithAttachment(String to, String subject, String body, byte[] attachmentEs,
+            byte[] attachmentEn)
+            throws Exception {
+        jakarta.mail.internet.MimeMessage message = mailSender.createMimeMessage();
+
+        MimeMessageHelper helper = new MimeMessageHelper(message, true);
+        helper.setFrom("proyectocardless@gmail.com");
+        helper.setTo(to);
+        helper.setSubject(subject);
+        helper.setText(body);
+
+        // Attach the Spanish and English PDFs
+        helper.addAttachment("EstadoCuenta_ES.pdf", new ByteArrayDataSource(attachmentEs, "application/pdf"));
+        helper.addAttachment("EstadoCuenta_EN.pdf", new ByteArrayDataSource(attachmentEn, "application/pdf"));
+
+        // Send the email
+        mailSender.send(message);
+    }
     public String cambiarPin(String numeroCuenta, String pinActual, String nuevoPin) {
         // Obtener la cuenta por su número
         Cuenta cuenta = obtenerCuentaPorNumero(numeroCuenta);
@@ -546,7 +576,7 @@ public class CuentaService {
     }
 
     public Map<String, Object> verificarPalabraYRetirarDolares(String numeroCuenta, String palabraIngresada,
-            BigDecimal montoDolares) {
+            BigDecimal montoDolares, HttpServletRequest request) {
         // Verificar la palabra clave
         
 
@@ -585,13 +615,11 @@ public class CuentaService {
         cuenta.setSaldo(cuenta.getSaldo().subtract(montoColones));
         cuentaRepository.save(cuenta);
 
-        // Guardar la transacción de retiro
-        Transaccion transaccion = new Transaccion();
-        transaccion.setCuenta(cuenta);
-        transaccion.setTipo(Transaccion.Tipo.Retiro);
-        transaccion.setMonto(montoColones);
-        transaccion.setComisionAplicada(comision);
-        transaccionRepository.save(transaccion);
+        EstadoCuenta estadoCuenta = new EstadoCuenta();
+        estadoCuenta.setNumeroCuenta(cuenta.getNumeroCuenta());
+        estadoCuenta.setSaldo(cuenta.getSaldo());
+
+        realizarTransaccion(estadoCuenta, montoColones, Transaccion.Tipo.Retiro, "Retiro", request);
 
         // Crear y retornar la respuesta
         Map<String, Object> response = new HashMap<>();
@@ -619,7 +647,8 @@ public class CuentaService {
 
 
     public Map<String, Object> verificarPalabraYTransferir(String numeroCuentaOrigen, String palabraIngresada,
-            BigDecimal monto, String numeroCuentaDestino) {
+            BigDecimal monto, String numeroCuentaDestino, HttpServletRequest request) {
+
         // Verificar palabra clave
         String palabraClaveAlmacenada = palabraClaveService.obtenerPalabraClave(numeroCuentaOrigen);
         if (palabraClaveAlmacenada == null || !palabraClaveAlmacenada.equals(palabraIngresada)) {
@@ -643,25 +672,31 @@ public class CuentaService {
         long totalTransacciones = transaccionRepository.countByCuenta(cuentaOrigen);
         if (totalTransacciones >= TRANSACCIONES_GRATIS) {
             comision = monto.multiply(COMISION);
-            monto = monto.add(comision);
+            monto = monto.add(comision); // Ajuste en el monto con la comisión incluida
         }
 
-        // Realizar transferencia
+        // Crear estados de cuenta para registrar en realizarTransaccion
+        EstadoCuenta estadoCuentaOrigen = new EstadoCuenta();
+        estadoCuentaOrigen.setNumeroCuenta(cuentaOrigen.getNumeroCuenta());
+        estadoCuentaOrigen.setSaldo(cuentaOrigen.getSaldo().subtract(monto));
+
+        EstadoCuenta estadoCuentaDestino = new EstadoCuenta();
+        estadoCuentaDestino.setNumeroCuenta(cuentaDestino.getNumeroCuenta());
+        estadoCuentaDestino.setSaldo(cuentaDestino.getSaldo().add(monto.subtract(comision)));
+
+        // Registrar ambas transacciones (origen y destino)
+        realizarTransaccion(estadoCuentaOrigen, monto, Transaccion.Tipo.Transferencia, "Transferencia Origen", request);
+        realizarTransaccion(estadoCuentaDestino, monto.subtract(comision), Transaccion.Tipo.Transferencia,
+                "Transferencia Destino", request);
+
+        // Aplicar ajustes de saldo y guardar
         cuentaOrigen.setSaldo(cuentaOrigen.getSaldo().subtract(monto));
         cuentaDestino.setSaldo(cuentaDestino.getSaldo().add(monto.subtract(comision)));
 
         cuentaRepository.save(cuentaOrigen);
         cuentaRepository.save(cuentaDestino);
 
-        // Registrar transacción
-        Transaccion transaccion = new Transaccion();
-        transaccion.setCuenta(cuentaOrigen);
-        transaccion.setTipo(Transaccion.Tipo.Transf);
-        transaccion.setMonto(monto);
-        transaccion.setComisionAplicada(comision);
-        transaccionRepository.save(transaccion);
-
-        // Eliminar palabra clave
+        // Eliminar palabra clave solo después de completar todas las operaciones
         palabraClaveService.eliminarPalabraClave(numeroCuentaOrigen);
 
         // Respuesta
@@ -673,40 +708,46 @@ public class CuentaService {
         return response;
     }
 
-
-    public Cuenta verificarPalabraYRetirar(String numeroCuenta, String palabraIngresada, BigDecimal monto) {
+    public Cuenta verificarPalabraYRetirar(String numeroCuenta, String palabraIngresada, BigDecimal monto,
+            HttpServletRequest request) {
+        // Verify the provided palabra (verification word) for the account
         String palabraClaveAlmacenada = palabraClaveService.obtenerPalabraClave(numeroCuenta);
         if (palabraClaveAlmacenada == null || !palabraClaveAlmacenada.equals(palabraIngresada)) {
             throw new IllegalArgumentException("La palabra ingresada es incorrecta.");
         }
 
+        // Fetch the account information
         Cuenta cuenta = cuentaRepository.findByNumeroCuenta(numeroCuenta);
         if (cuenta == null) {
             throw new IllegalArgumentException("Cuenta no encontrada.");
         }
 
+        // Ensure sufficient balance
         if (cuenta.getSaldo().compareTo(monto) < 0) {
             throw new IllegalArgumentException("Fondos insuficientes.");
         }
+
         BigDecimal comision = BigDecimal.ZERO;
         long totalTransacciones = transaccionRepository.countByCuenta(cuenta);
         if (totalTransacciones >= TRANSACCIONES_GRATIS) {
-            comision = monto.multiply(COMISION); 
-            monto = monto.add(comision); 
+            comision = monto.multiply(COMISION);
+            monto = monto.add(comision);
         }
-        Transaccion transaccion = new Transaccion();
-        transaccion.setCuenta(cuenta);
-        transaccion.setTipo(Transaccion.Tipo.Retiro);
-        transaccion.setMonto(monto);
-        transaccion.setComisionAplicada(comision);
-        transaccionRepository.save(transaccion);
 
-        // Aplicar lógica de comisiones y realizar el retiro
+        // Call realizarTransaccion for logging and transaction processing
+        EstadoCuenta estadoCuenta = new EstadoCuenta();
+        estadoCuenta.setNumeroCuenta(cuenta.getNumeroCuenta());
+        estadoCuenta.setSaldo(cuenta.getSaldo());
+
+        realizarTransaccion(estadoCuenta, monto, Transaccion.Tipo.Retiro, "Retiro", request);
+
+        // Apply the commission and update the account balance
         cuenta.setSaldo(cuenta.getSaldo().subtract(monto));
         cuentaRepository.save(cuenta);
 
-        // Registrar transacción y eliminar palabra clave
+        // Remove the verification word after a successful transaction
         palabraClaveService.eliminarPalabraClave(numeroCuenta);
+
         return cuenta;
     }
 

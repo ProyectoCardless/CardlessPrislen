@@ -3,7 +3,8 @@ package com.banco.CajerosCardless;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = {"com.banco.CajerosCardless"})
+
 public class CajerosCardlessApplication {
 
 	public static void main(String[] args) {

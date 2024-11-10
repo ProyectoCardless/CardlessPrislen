@@ -43,6 +43,6 @@ public class Transaccion {
     private BigDecimal comisionAplicada = BigDecimal.ZERO;
 
     public enum Tipo {
-        Deposito, Retiro,Transf
+        Deposito, Retiro,Transferencia
     }
 }

@@ -11,6 +11,7 @@ import com.banco.CajerosCardless.services.CuentaService;
 import com.banco.CajerosCardless.services.ExchangeRateService;
 import com.banco.CajerosCardless.services.PalabraClaveService;
 import com.banco.CajerosCardless.services.SmsService;
+import jakarta.servlet.http.HttpServletRequest;
 
 import org.springframework.web.bind.annotation.*;
 
@@ -175,62 +176,64 @@ public class BancoController {
 
     // Depositar en cuenta
     @PostMapping("/cuentas/{numeroCuenta}/depositar")
-    public ResponseEntity<Map<String, Object>> depositar(@PathVariable String numeroCuenta,
-            @RequestBody Map<String, Object> body) {
-        BigDecimal monto = new BigDecimal(body.get("monto").toString());
+public ResponseEntity<Map<String, Object>> depositar(
+        @PathVariable String numeroCuenta,
+        @RequestBody Map<String, Object> body,
+        HttpServletRequest request) {  // Add HttpServletRequest
+
+    BigDecimal monto = new BigDecimal(body.get("monto").toString());
+    String pin = body.get("pin").toString();
+
+    try {
+        // Pass the request to the service layer for logging purposes
+        Cuenta cuenta = cuentaService.depositar(numeroCuenta, monto, pin, request);
+
+        // Prepare the response
+        Map<String, Object> response = new HashMap<>();
+        response.put("numeroCuenta", cuenta.getNumeroCuenta());
+        response.put("montoRealDepositado", monto);
+        response.put("comision", cuenta.getTransacciones().get(cuenta.getTransacciones().size() - 1).getComisionAplicada());
+        response.put("mensaje", "Depósito realizado correctamente.");
+
+        return ResponseEntity.ok(response);
+    } catch (IllegalArgumentException e) {
+        Map<String, Object> errorResponse = new HashMap<>();
+        errorResponse.put("mensaje", e.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+    }
+}
+
+    @PostMapping("/cuentas/{numeroCuenta}/depositar-dolares")
+    public ResponseEntity<Map<String, Object>> depositarDolares(
+            @PathVariable String numeroCuenta,
+            @RequestBody Map<String, Object> body,
+            HttpServletRequest request) {  // Add HttpServletRequest
+
+        BigDecimal montoUSD = new BigDecimal(body.get("monto").toString());
         String pin = body.get("pin").toString();
 
         try {
-            Cuenta cuenta = cuentaService.depositar(numeroCuenta, monto, pin);
+            // Get the current exchange rate for conversion
+            BigDecimal tipoCambioCompra = exchangeRateService.getCRCExchangeRate();
+            BigDecimal montoCRC = montoUSD.multiply(tipoCambioCompra);
+
+            // Deposit in CRC after converting from USD
+            Cuenta cuenta = cuentaService.depositar(numeroCuenta, montoCRC, pin, request);
+
+            // Prepare the response
             Map<String, Object> response = new HashMap<>();
-            response.put("numeroCuenta", cuenta.getNumeroCuenta());
-            response.put("montoRealDepositado", monto); // Devuelve el monto depositado
-            response.put("comision",
-                    cuenta.getTransacciones().get(cuenta.getTransacciones().size() - 1).getComisionAplicada()); // Comision
-                                                                                                                // aplicada
-                                                                                                                // si la
-                                                                                                                // hay
-            response.put("mensaje", "Depósito realizado correctamente.");
+            response.put("mensaje", "Depósito realizado correctamente");
+            response.put("montoDepositadoUSD", montoUSD);
+            response.put("tipoCambio", tipoCambioCompra);
+            response.put("montoDepositadoCRC", montoCRC);
+            response.put("montoRealDepositado", cuenta.getSaldo());
+            response.put("comision", cuenta.getTransacciones().get(cuenta.getTransacciones().size() - 1).getComisionAplicada());
 
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("mensaje", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
-        }
-    }
-
-    @PostMapping("/cuentas/{numeroCuenta}/depositar-dolares")
-    public ResponseEntity<Map<String, Object>> depositarDolares(@PathVariable String numeroCuenta,
-            @RequestBody Map<String, Object> body) {
-        BigDecimal montoUSD = new BigDecimal(body.get("monto").toString());
-        String pin = body.get("pin").toString();
-
-        try {
-            // Obtener tipo de cambio actual de compra
-            BigDecimal tipoCambioCompra = exchangeRateService.getCRCExchangeRate(); // Asegúrate de que no sea nulo
-            BigDecimal montoCRC = montoUSD.multiply(tipoCambioCompra); // Convertir a colones
-
-            // Realizar el depósito (validar el PIN, aplicar comisiones, etc.)
-            Cuenta cuenta = cuentaService.depositar(numeroCuenta, montoCRC, pin); // Aquí depositamos en colones
-
-            // Crear respuesta
-            Map<String, Object> response = new HashMap<>();
-            response.put("mensaje", "Depósito realizado correctamente");
-            response.put("montoDepositadoUSD", montoUSD);
-            response.put("tipoCambio", tipoCambioCompra);
-            response.put("montoDepositadoCRC", montoCRC);
-            response.put("montoRealDepositado", cuenta.getSaldo()); // El saldo actualizado de la cuenta
-            response.put("comision",
-                    cuenta.getTransacciones().get(cuenta.getTransacciones().size() - 1).getComisionAplicada()); // Obtener
-                                                                                                                // última
-                                                                                                                // comisión
-                                                                                                                // aplicada
-
-            return ResponseEntity.ok(response);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null); // Manejar errores de PIN incorrecto u
-                                                                             // otros errores
         }
     }
 
@@ -290,13 +293,17 @@ public class BancoController {
     }
 
     @PostMapping("/{numeroCuenta}/verificar-palabra-y-retirar")
-    public ResponseEntity<Map<String, String>> verificarPalabraYRetirar(@PathVariable String numeroCuenta,
-            @RequestBody Map<String, Object> body) {
-        String palabraIngresada = body.get("palabraIngresada").toString();
+    public ResponseEntity<Map<String, String>> verificarPalabraYRetirar(
+            @PathVariable String numeroCuenta,
+            @RequestBody Map<String, Object> body,
+            HttpServletRequest request) { // Add HttpServletRequest here
+
+        String palabraIngresada = body.get("palabra").toString();
         BigDecimal monto = new BigDecimal(body.get("monto").toString());
 
         try {
-            Cuenta cuenta = cuentaService.verificarPalabraYRetirar(numeroCuenta, palabraIngresada, monto);
+            Cuenta cuenta = cuentaService.verificarPalabraYRetirar(numeroCuenta, palabraIngresada, monto, request); // Pass
+                                                                                                                    // `request`
             Map<String, String> response = new HashMap<>();
             response.put("mensaje", "Retiro exitoso");
             response.put("saldoActual", cuenta.getSaldo().toString());
@@ -336,14 +343,15 @@ public class BancoController {
 
     @PostMapping("/{numeroCuentaOrigen}/verificar-palabra-y-transferir")
     public ResponseEntity<Map<String, String>> verificarPalabraYTransferir(@PathVariable String numeroCuentaOrigen,
-            @RequestBody Map<String, Object> body) {
+            @RequestBody Map<String, Object> body,
+            HttpServletRequest request) {
         String palabraIngresada = body.get("palabraIngresada").toString();
         BigDecimal monto = new BigDecimal(body.get("monto").toString());
         String numeroCuentaDestino = body.get("numeroCuentaDestino").toString();
 
         try {
             Map<String, Object> result = cuentaService.verificarPalabraYTransferir(numeroCuentaOrigen, palabraIngresada,
-                    monto, numeroCuentaDestino);
+                    monto, numeroCuentaDestino, request);
 
             Map<String, String> response = new HashMap<>();
             response.put("mensaje", "Transferencia exitosa");
@@ -362,14 +370,15 @@ public class BancoController {
     // Verificar palabra clave y realizar retiro en dólares - Segunda fase
     @PostMapping("/{numeroCuenta}/verificar-palabra-y-retirar-dolares")
     public ResponseEntity<Map<String, String>> verificarPalabraYRetirarDolares(@PathVariable String numeroCuenta,
-            @RequestBody Map<String, Object> body) {
+            @RequestBody Map<String, Object> body,
+            HttpServletRequest request) {
         String palabraIngresada = body.get("palabraIngresada").toString();
         BigDecimal montoDolares = new BigDecimal(body.get("monto").toString());
 
         try {
             // Procesar el retiro en dólares
             Map<String, Object> result = cuentaService.verificarPalabraYRetirarDolares(numeroCuenta, palabraIngresada,
-                    montoDolares);
+                    montoDolares, request);
 
             // Crear respuesta
             Map<String, String> response = new HashMap<>();

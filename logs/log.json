@@ -1,0 +1,8 @@
+
+{"timestamp":"2024-11-08T20:51:18.9720148","ipAddress":"203.0.113.195","operatingSystem":"Windows","country":"United States","action":"Retiro"}
+{"timestamp":"2024-11-08T22:21:53.5995869","ipAddress":"203.0.113.195","operatingSystem":"Windows","country":"United States","action":"Retiro"}
+{"timestamp":"2024-11-08T22:29:05.3362044","ipAddress":"203.0.113.195","operatingSystem":"Windows","country":"United States","action":"Retiro"}
+{"timestamp":"2024-11-09T15:14:09.8540644","ipAddress":"203.0.113.195","operatingSystem":"Windows","country":"United States","action":"Depósito"}
+{"timestamp":"2024-11-09T16:01:33.3387856","ipAddress":"203.0.113.195","operatingSystem":"Windows","country":"United States","action":"Retiro"}
+{"timestamp":"2024-11-09T16:16:42.2917241","ipAddress":"203.0.113.195","operatingSystem":"Unix/Linux","country":"United States","action":"Transferencia Origen"}
+{"timestamp":"2024-11-09T16:16:42.8450933","ipAddress":"203.0.113.195","operatingSystem":"Unix/Linux","country":"United States","action":"Transferencia Destino"}
