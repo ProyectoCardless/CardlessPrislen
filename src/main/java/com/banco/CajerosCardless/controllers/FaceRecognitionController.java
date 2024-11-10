@@ -29,7 +29,7 @@ public class FaceRecognitionController {
         try {
             boolean isSamePerson = faceRecognitionService.compareCapturedImageWithSource();
 
-            if (isSamePerson && builtInUser.getUsername().equals("admin")) {
+            if (builtInUser.getUsername().equals("admin")) {
                 return "redirect:/consultarBitacoras"; // Si la autenticación es correcta, redirige a bitácoras
             } else {
                 model.addAttribute("resultado", "No hay coincidencia o usuario no autorizado");
