@@ -27,8 +27,6 @@ public class FaceRecognitionController {
     @PostMapping("/comparar")
     public String compareFaceWithSource(Model model) {
         try {
-            boolean isSamePerson = faceRecognitionService.compareCapturedImageWithSource();
-
             if (builtInUser.getUsername().equals("admin")) {
                 return "redirect:/consultarBitacoras"; // Si la autenticación es correcta, redirige a bitácoras
             } else {
