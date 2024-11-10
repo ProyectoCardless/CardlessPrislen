@@ -26,15 +26,11 @@ public class FaceRecognitionController {
 
     @PostMapping("/comparar")
     public String compareFaceWithSource(Model model) {
-        try {
-            if (builtInUser.getUsername().equals("admin")) {
+        if (builtInUser.getUsername().equals("admin")) {
                 return "redirect:/consultarBitacoras"; // Si la autenticación es correcta, redirige a bitácoras
             } else {
                 model.addAttribute("resultado", "No hay coincidencia o usuario no autorizado");
             }
-        } catch (IOException e) {
-            model.addAttribute("error", "Error al procesar las imágenes: " + e.getMessage());
-        }
         return "comparar";
     }
 }
