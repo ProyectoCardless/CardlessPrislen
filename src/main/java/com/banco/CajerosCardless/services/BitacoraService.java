@@ -6,6 +6,7 @@ package com.banco.CajerosCardless.services;
 
 import org.springframework.stereotype.Service;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -65,7 +66,8 @@ public class BitacoraService {
         }
     }
 
-    private List<String> filtrarPorFechaYHora(List<String> registros, LocalDate fecha, LocalTime horaInicio, LocalTime horaFin) {
+    private List<String> filtrarPorFechaYHora(List<String> registros, LocalDate fecha, LocalTime horaInicio,
+            LocalTime horaFin) {
         if (fecha != null) {
             registros = registros.stream()
                     .filter(line -> line.contains(fecha.toString()))
