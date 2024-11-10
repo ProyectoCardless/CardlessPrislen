@@ -13,49 +13,56 @@ import java.io.IOException;
 import java.io.PrintWriter;
 
 public class CsvLogObserver implements LogObserver {
-
-    private static final String FILE_PATH = "logs/log.csv";
-    private PrintWriter writer;
+    private static final String TEMP_FILE_PATH = System.getProperty("java.io.tmpdir") + "/log.csv";
+    private static final String LOCAL_FILE_PATH = "src/main/resources/static/logs/log.csv";
+    private final PrintWriter tempWriter;
+    private final PrintWriter localWriter;
 
     public CsvLogObserver() {
-        initializeCsvFile();
+        tempWriter = initializeWriter(TEMP_FILE_PATH);
+        localWriter = initializeWriter(LOCAL_FILE_PATH);
     }
 
-    // Inicializa el archivo CSV y agrega encabezados si el archivo está vacío
-    private synchronized void initializeCsvFile() {
+    private PrintWriter initializeWriter(String filePath) {
         try {
-            // Crea el directorio "logs" si no existe
-            File file = new File(FILE_PATH);
+            File file = new File(filePath);
             file.getParentFile().mkdirs();
 
             boolean fileExists = file.exists();
-            this.writer = new PrintWriter(new BufferedWriter(new FileWriter(file, true)));
+            PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(file, true)));
 
-            // Agrega encabezados solo si el archivo está vacío
             if (!fileExists || file.length() == 0) {
                 writer.println("timestamp,ipAddress,operatingSystem,country,action");
                 writer.flush();
             }
+            return writer;
         } catch (IOException e) {
-            throw new RuntimeException("Failed to initialize CSV log writer", e);
+            throw new RuntimeException("Failed to initialize CSV log writer for " + filePath, e);
         }
     }
 
     @Override
     public synchronized void logAction(LogEntry logEntry) {
-        writer.printf("%s,%s,%s,%s,%s%n",
+        String logData = String.format("%s,%s,%s,%s,%s%n",
                 logEntry.getTimestamp(),
                 logEntry.getIpAddress(),
                 logEntry.getOperatingSystem(),
                 logEntry.getCountry(),
                 logEntry.getAction());
-        writer.flush(); // Asegura que los datos se escriban en el archivo inmediatamente
+
+        tempWriter.write(logData);
+        localWriter.write(logData);
+
+        tempWriter.flush();
+        localWriter.flush();
     }
 
-    // Método para cerrar el escritor y liberar el archivo
-    public void closeWriter() {
-        if (writer != null) {
-            writer.close();
+    public void closeWriters() {
+        if (tempWriter != null) {
+            tempWriter.close();
+        }
+        if (localWriter != null) {
+            localWriter.close();
         }
     }
 }
