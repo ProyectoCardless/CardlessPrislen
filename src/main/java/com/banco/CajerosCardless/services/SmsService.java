@@ -10,7 +10,7 @@ public class SmsService {
 
     // Twilio credentials
     private static final String ACCOUNT_SID = "AC9671f57b1a8e604a050087aaa91f50d1";
-    private static final String AUTH_TOKEN = "e78aaaefe03a4d331d3ff37d433dd9b4";
+    private static final String AUTH_TOKEN = "24f74583956b6709ec0e2bc600c0305d";
     private static final String FROM_PHONE_NUMBER = "+18705681441";
 
     public SmsService() {
