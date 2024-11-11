@@ -9,8 +9,8 @@ import org.springframework.stereotype.Service;
 public class SmsService {
 
     // Twilio credentials
-    private static final String ACCOUNT_SID = "AC9671f57b1a8e604a050087aaa91f50d1";
-    private static final String AUTH_TOKEN = "24f74583956b6709ec0e2bc600c0305d";
+    private static final String ACCOUNT_SID = "ACf93687e609e287b73e11ab67940f3d54";
+    private static final String AUTH_TOKEN = "1cedaecc48c478365a9ee441fa7cef07";
     private static final String FROM_PHONE_NUMBER = "+18705681441";
 
     public SmsService() {
